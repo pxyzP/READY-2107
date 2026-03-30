@@ -61,29 +61,27 @@ policies, either expressed or implied, of the FreeBSD Project.
  * Either via curve fitting (hyperbolic, polynomial, log etc), or piece-wise linear method.
  */
 int32_t LeftConvert(int32_t nl)
-{ // returns left distance in mm
+{ // returns left distance in cm
   // write this for Lab 4
-  uint32_t length = 0;
-  length = 93392.87 / (nl - 1490.614); // y = m/x -c --> x = m/(y+c)
+  int32_t length = nl;
+  // length = 159727/nl - 3.262;
 
-  // return nl;
   return length;
 }
 
 int32_t CenterConvert(int32_t nc)
-{ // returns center distance in mm
+{ // returns center distance in cm
   // write this for Lab 4
-  uint32_t length = 0;
-  length = 86338.87 / (nc - 1599.545);
-  // return nc;
+  int32_t length = nc;
+  // length = 183440/nc-6.9665;
   return length;
 }
 
 int32_t RightConvert(int32_t nr)
-{ // returns right distance in mm
+{ // returns right distance in cm
   // write this for Lab 4
-  uint32_t length = 0;
-  length = 92670.14 / (nr - 1383.932);
-  // return nr;
+  int32_t length = nr;
+  // length = 177993/nr - 6.0759;
+
   return length;
 }
