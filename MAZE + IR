@@ -1,0 +1,26 @@
+        // // Maze with IR
+        //    Motor_Forward(1000,1000); // move forward until facing first stop line
+        //    rf_data = Reflectance_Read(1000);
+        //    rf_center = Reflectance_Center(1000);
+        //    nlc = LeftConvert(nl);
+        //    nrc = RightConvert(nr);
+        //    ncc = CenterConvert(nc);
+
+        //    if(ncc <=  30){
+        //         Blink(200);
+        //         Motor_Left(1000,1000);
+        //         Clock_Delay1ms(1200);
+        //         Motor_Stop();
+        //         Motor_Forward(1000,1000);
+        //    }
+        //    else{
+        //         Motor_Forward(1000,1000);
+        //    }
+
+        //    // hard code section
+        //    Motor_Forward(1000,1000);
+        //    Clock_Delay1ms(2000);
+        //    Motor_Left(1000,1000);
+        //    Clock_Delay1ms(1200);
+        //    // ------------------
+...
