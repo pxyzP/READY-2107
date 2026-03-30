@@ -11,11 +11,11 @@
 #include "..\inc\EUSCIA0.h"
 #include "..\inc\FIFO0.h"
 #include "..\inc\Clock.h"
-//#include "..\inc\SysTick.h"
+// #include "..\inc\SysTick.h"
 #include "..\inc\SysTickInts.h"
 #include "..\inc\CortexM.h"
 #include "..\inc\TimerA1.h"
-//#include "..\inc\Bump.h"
+// #include "..\inc\Bump.h"
 #include "..\inc\BumpInt.h"
 #include "..\inc\LaunchPad.h"
 #include "..\inc\Motor.h"
@@ -32,12 +32,12 @@ uint8_t bump_data, rf_data, rf_center;
 
 volatile uint32_t ADCvalue;
 volatile uint32_t ADCflag;
-volatile uint32_t nr,nc,nl,nlc,nrc,ncc;
+volatile uint32_t nr, nc, nl, nlc, nrc, ncc;
 
 // Tachometer variables (using Tachometer.h API)
-uint16_t leftSpeed, rightSpeed;           // wheel speeds (0.083 μs units)
-enum TachDirection leftDir, rightDir;     // FORWARD, STOPPED, REVERSE
-int32_t leftSteps, rightSteps;            // step counters (360 steps ≈ 220mm)
+uint16_t leftSpeed, rightSpeed;       // wheel speeds (0.083 μs units)
+enum TachDirection leftDir, rightDir; // FORWARD, STOPPED, REVERSE
+int32_t leftSteps, rightSteps;        // step counters (360 steps ≈ 220mm)
 
 // --- TimerA3Capture variables (COMMENTED - use Tachometer API instead) ---
 // uint16_t Period0;              // Right wheel period (1/SMCLK) units = 83.3 ns
@@ -47,31 +47,33 @@ int32_t leftSteps, rightSteps;            // step counters (360 steps ≈ 220mm)
 // uint16_t First2=0;             // Timer A3 first edge, P8.2
 // uint32_t Done2=0;              // pulse count
 
-void SensorRead_ISR(void){  // runs at 2000 Hz
-  uint32_t raw17,raw12,raw16;
-  P1OUT ^= 0x01;         // profile
-  P1OUT ^= 0x01;         // profile
-  ADC_In17_12_16(&raw17,&raw12,&raw16);  // sample
-  nr = LPF_Calc(raw17);  // right is channel 17 P9.0
-  nc = LPF_Calc2(raw12);  // center is channel 12, P4.1
-  nl = LPF_Calc3(raw16);  // left is channel 16, P9.1
-  ADCflag = 1;           // semaphore
-  P1OUT ^= 0x01;         // profile
+void SensorRead_ISR(void)
+{ // runs at 2000 Hz
+    uint32_t raw17, raw12, raw16;
+    P1OUT ^= 0x01;                          // profile
+    P1OUT ^= 0x01;                          // profile
+    ADC_In17_12_16(&raw17, &raw12, &raw16); // sample
+    nr = LPF_Calc(raw17);                   // right is channel 17 P9.0
+    nc = LPF_Calc2(raw12);                  // center is channel 12, P4.1
+    nl = LPF_Calc3(raw16);                  // left is channel 16, P9.1
+    ADCflag = 1;                            // semaphore
+    P1OUT ^= 0x01;                          // profile
 }
 
 // Color definitions for RGB LED (use with LaunchPad_Output)
-#define LED_OFF     0x00
-#define LED_RED     0x01
-#define LED_GREEN   0x02
-#define LED_BLUE    0x04
-#define LED_YELLOW  0x03  // RED + GREEN
-#define LED_CYAN    0x06  // GREEN + BLUE
-#define LED_MAGENTA 0x05  // RED + BLUE
-#define LED_WHITE   0x07  // RED + GREEN + BLUE
+#define LED_OFF 0x00
+#define LED_RED 0x01
+#define LED_GREEN 0x02
+#define LED_BLUE 0x04
+#define LED_YELLOW 0x03  // RED + GREEN
+#define LED_CYAN 0x06    // GREEN + BLUE
+#define LED_MAGENTA 0x05 // RED + BLUE
+#define LED_WHITE 0x07   // RED + GREEN + BLUE
 
-void Blink(int time){
+void Blink(int time)
+{
     LaunchPad_Output(LED_CYAN);
-    //LaunchPad_LED(1);
+    // LaunchPad_LED(1);
     Clock_Delay1ms(time);
     // LaunchPad_LED(0);
     LaunchPad_Output(LED_OFF);
@@ -93,15 +95,21 @@ void Blink(int time){
 //   Done2++;                          // count pulses
 // }
 
-void BumpHandler(uint8_t d){
-    (void) P4->IV;
+// BUMP + Blink
+void BumpHandler(uint8_t d)
+{
+    (void)P4->IV;
     bump_data = d;
-    for(int i = 0; i < 6; i++){
-        if(!((1<<i)&bump_data)){  // check if each sensor == 0 (aka pressed)
-            if(i%2){ // if even blink 1
+    for (int i = 0; i < 6; i++)
+    {
+        if (!((1 << i) & bump_data))
+        { // check if each sensor == 0 (aka pressed)
+            if (i % 2)
+            { // if even blink 1
                 Blink(200);
             }
-            else {   // if odd blink 2
+            else
+            { // if odd blink 2
                 Blink(200);
                 Blink(200);
             }
@@ -110,62 +118,145 @@ void BumpHandler(uint8_t d){
     }
 }
 
-void TimedPause(uint32_t time){
-  Clock_Delay1ms(time);         // run for a while and stop
-  Motor_Stop();
-  while(LaunchPad_Input()==0);  // wait for touch
-  while(LaunchPad_Input());     // wait for release
+void TimedPause(uint32_t time)
+{
+    Clock_Delay1ms(time); // run for a while and stop
+    Motor_Stop();
+    while (LaunchPad_Input() == 0)
+        ; // wait for touch
+    while (LaunchPad_Input())
+        ; // wait for release
 }
 
-int main(){
+int main()
+{
 
-     uint32_t raw17,raw12,raw16;
-     int32_t n;
-     uint32_t s;
+    uint32_t raw17, raw12, raw16;
+    int32_t n;
+    uint32_t s;
 
-     // init section
-     Clock_Init48MHz();
-     Motor_Init();
-     Motor_Stop();
-     LaunchPad_Init();
-     Reflectance_Init();
-     BumpInt_Init(&BumpHandler);
-     ADCflag = 0;
-     s = 256; // replace with your choice
-     ADC0_InitSWTriggerCh17_12_16();   // initialize channels 17,12,16
-     ADC_In17_12_16(&raw17,&raw12,&raw16);  // sample
-     LPF_Init(raw17,s);     // P9.0/channel 17
-     LPF_Init2(raw12,s);     // P4.1/channel 12
-     LPF_Init3(raw16,s);     // P9.1/channel 16
-     UART0_Init();
-     TimerA1_Init(&SensorRead_ISR,250); // read sensor
+    // init section
+    Clock_Init48MHz();
+    Motor_Init();
+    Motor_Stop();
+    LaunchPad_Init();
+    Reflectance_Init();
+    BumpInt_Init(&BumpHandler);
+    ADCflag = 0;
+    s = 256;                                // replace with your choice
+    ADC0_InitSWTriggerCh17_12_16();         // initialize channels 17,12,16
+    ADC_In17_12_16(&raw17, &raw12, &raw16); // sample
+    LPF_Init(raw17, s);                     // P9.0/channel 17
+    LPF_Init2(raw12, s);                    // P4.1/channel 12
+    LPF_Init3(raw16, s);                    // P9.1/channel 16
+    UART0_Init();
+    TimerA1_Init(&SensorRead_ISR, 250); // read sensor
 
-     // Tachometer initialization (uses TimerA3 internally)
-     Tachometer_Init();
+    // Tachometer initialization (uses TimerA3 internally)
+    Tachometer_Init();
 
-     // --- COMMENTED: Manual TimerA3Capture (use Tachometer_Init instead) ---
-//      TimerA3Capture_Init(&PeriodMeasure0,&PeriodMeasure2);
+    // --- COMMENTED: Manual TimerA3Capture (use Tachometer_Init instead) ---
+    //      TimerA3Capture_Init(&PeriodMeasure0,&PeriodMeasure2);
 
-     EnableInterrupts();
+    EnableInterrupts();
     // end init
-     TimedPause(10);
+    TimedPause(10);
 
-     while(1){
-       //WaitForInterrupt();
-       // Read sensors
+    while (1)
+    {
+        // WaitForInterrupt();
+        //  Read sensors
+        rf_data = Reflectance_Read(1000);
+        rf_center = Reflectance_Center(1000);
+        nlc = LeftConvert(nl);
+        nrc = RightConvert(nr);
+        ncc = CenterConvert(nc);
 
-       rf_data = Reflectance_Read(1000);
-       rf_center = Reflectance_Center(1000);
+        //    // Reflectance, rotate til all black
+        //    rf_data = Reflectance_Read(1000);
+        //    rf_center = Reflectance_Center(1000);
 
-       while(rf_data != 0xFF){ // not yet all black
-          Motor_Right(1000, 1000);
-          rf_data = Reflectance_Read(1000);
-          Clock_Delay1ms(10);
-       }
-      Motor_Stop();
-      TimedPause(1300);
+        //    while(rf_data != 0xFF){ // not yet all black
+        //       Motor_Right(1000, 1000);
+        //       rf_data = Reflectance_Read(1000);
+        //       Clock_Delay1ms(10);
+        //    }
+
+        //    //Blink + Reflectance if >= 1 black then blink
+        //    rf_data = Reflectance_Read(1000);
+        //    rf_center = Reflectance_Center(1000);
+
+        //    while(rf_data != 0x00){ // not all white
+        //       Blink(200);
+        //       rf_data = Reflectance_Read(1000);
+        //       Clock_Delay1ms(10);
+        //    }
+
+        // Blink + IR if < 20 cm then blink + turn back ward + stop
+        // if(ncc < 20){
+        //     Blink(200);
+        //     Motor_Backward(1000,1000);
+        //     Clock_Delay1ms(500);
+        //     Motor_Stop();
+        // }
+        // else{
+        //     Motor_Forward(1000,1000);
+        // }
+
+        // // Maze
+        //    Motor_Forward(1000,1000); // move forward until facing first stop line
+        //    while(rf_data != 0xFF){ // not yet all 1 aka all black
+        //       rf_data = Reflectance_Read(1000);
+        //       Clock_Delay1ms(10);
+        //    }
+        //    Motor_Right(1000,1000); // rotate right as instruction
+        //    Clock_Delay1ms(1200);
+
+        //    // hard code section
+        //    Motor_Forward(1000,1000);
+        //    Clock_Delay1ms(2000);
+        //    Motor_Left(1000,1000);
+        //    Clock_Delay1ms(1200);
+        //    // ------------------
+
+        //    rf_data = Reflectance_Read(1000);
+        //    Clock_Delay1ms(10);
+        //    Motor_Forward(1000,1000);
+        //    while(rf_data != 0xFF){ // move foward until facing second stop line
+        //         rf_data = Reflectance_Read(1000);
+        //          Clock_Delay1ms(10);
+        //    }
+        //    Motor_Left(1000,1000); // rotate left as instruction
+        //    Clock_Delay1ms(1300);
+
+        //    // hard code section
+        //    Motor_Forward(1000,1000);
+        //    Clock_Delay1ms(2000);
+        //    Motor_Left(1000,1000);
+        //    Clock_Delay1ms(1300);
+        //    Motor_Forward(1000,1000);
+        //    Clock_Delay1ms(2200);
+        //    Motor_Right(1000,1000);
+        //    Clock_Delay1ms(1200);
+        //    // -----------------
+
+        //    Motor_Forward(1000,1000);
+        //    rf_data = Reflectance_Read(1000);
+        //    Clock_Delay1ms(10);
+        //    while(rf_data != 0xFF){ // ignore the thrid stop line
+        //          rf_data = Reflectance_Read(1000);
+        //          Clock_Delay1ms(10);
+        //    }
+        //    Motor_Forward(1000,1000);
+        //    Clock_Delay1ms(500);
+        //    rf_data = Reflectance_Read(1000);
+        //    Clock_Delay1ms(10);
+        //    while(rf_data != 0xFF){ // stop at fourth stop line
+        //          rf_data = Reflectance_Read(1000);
+        //          Clock_Delay1ms(10);
+        //    }
+
+        Motor_Stop();
+        TimedPause(1300);
+    }
 }
-
-}
-
-
