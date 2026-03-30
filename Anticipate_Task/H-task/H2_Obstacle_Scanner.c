@@ -31,12 +31,13 @@
 
 volatile uint32_t nr, nc, nl;
 
+// create a struct to keep distance and obstacle number
 typedef struct {
     uint32_t distance_mm;
     uint8_t obstacle_num;
 } ObstacleData;
 
-ObstacleData obstacles[NUM_OBSTACLES];
+ObstacleData obstacles[NUM_OBSTACLES]; // an array of obs
 uint8_t obstacle_count = 0;
 
 void SensorRead_ISR(void){
@@ -49,7 +50,7 @@ void SensorRead_ISR(void){
 
 // Manual find minimum (NO library functions)
 void FindClosestObstacle(uint8_t *index, uint32_t *minDist){
-    *minDist = 0xFFFFFFFF;
+    *minDist = 0xFFFFFFFF;   //set the index and the minimum distance of the closest obs
     *index = 0;
     
     for (uint8_t i = 0; i < obstacle_count; i++) {
@@ -62,7 +63,7 @@ void FindClosestObstacle(uint8_t *index, uint32_t *minDist){
 
 // Manual find maximum (NO library functions)
 void FindFurthestObstacle(uint8_t *index, uint32_t *maxDist){
-    *maxDist = 0;
+    *maxDist = 0;        //set the index and the minimum distance of the furthest obs
     *index = 0;
     
     for (uint8_t i = 0; i < obstacle_count; i++) {
@@ -102,14 +103,17 @@ int main(){
     while(LaunchPad_Input() == 0);
     while(LaunchPad_Input());
     
-    Motor_Forward(2000, 2000);
+    Motor_Forward(2000, 2000); // move forward
+
+
+
     
     // Scanning phase
     while(obstacle_count < NUM_OBSTACLES){
-        centerDist_mm = CenterConvert(nc);
+        centerDist_mm = CenterConvert(nc); // use the mid sensor only
         
         // Check if obstacle detected
-        if (centerDist_mm < OBSTACLE_THRESHOLD_MM && centerDist_mm > 50) {
+        if (centerDist_mm < OBSTACLE_THRESHOLD_MM && centerDist_mm > 50) { // if 50<dist<300
             // Stop
             Motor_Stop();
             
@@ -129,8 +133,8 @@ int main(){
             
             // Turn 60 degrees
             UART0_OutString("Turning 60 degrees...\r\n\r\n");
-            Motor_Right(2000, 2000);
-            Clock_Delay1ms(TURN_60_DEG_MS);
+            Motor_Right(2000, 2000); // can manually change
+            Clock_Delay1ms(TURN_60_DEG_MS); // now set to 200
             Motor_Stop();
             Clock_Delay1ms(500);
             
