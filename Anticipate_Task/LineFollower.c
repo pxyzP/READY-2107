@@ -45,8 +45,8 @@ uint8_t GetLinePosition(uint8_t sensors) {
     // bit pattern: [S7 S6 S5 S4 S3 S2 S1 S0]
     // Dark line = 0, Light surface = 1
     
-    // Check center sensors (bits 3,4 - middle two sensors)
-    if ((sensors & 0x18) == 0x00) {
+    // Check if the  center sensors on black (bits 3,4 - middle two sensors)
+    if ((sensors & 0x18) == 0x00) { // 0001 1000
         // Both center sensors see dark line
         return ON_LINE_CENTER;
     }
@@ -64,6 +64,8 @@ uint8_t GetLinePosition(uint8_t sensors) {
     // No clear line detected
     return LINE_LOST;
 }
+
+
 
 // Control motors based on line position
 void FollowLine(uint8_t position, int32_t center) {
@@ -174,6 +176,10 @@ int main(){
         
         // Follow the line
         FollowLine(line_position, rf_center);
+
+
+
+
         
         // Print debug info every 100 loops (~1 second)
         if (loop_count % 100 == 0) {
@@ -199,6 +205,11 @@ int main(){
         }
         
         loop_count++;
+
+
+
+
+        
         Clock_Delay1ms(10);  // 10ms delay between readings
     }
 }
