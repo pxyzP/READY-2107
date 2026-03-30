@@ -1,0 +1,188 @@
+/*
+ * Lab5Template.c
+ *
+ *  Created on: 30 Oct 2025
+ *      Author: nathan003
+ */
+#include "msp.h"
+#include <stdint.h>
+#include <string.h>
+#include "..\inc\UART0.h"
+#include "..\inc\EUSCIA0.h"
+#include "..\inc\FIFO0.h"
+#include "..\inc\Clock.h"
+//#include "..\inc\SysTick.h"
+#include "..\inc\SysTickInts.h"
+#include "..\inc\CortexM.h"
+#include "..\inc\TimerA1.h"
+//#include "..\inc\Bump.h"
+#include "..\inc\BumpInt.h"
+#include "..\inc\LaunchPad.h"
+#include "..\inc\Motor.h"
+#include "../inc/IRDistance.h"
+#include "../inc/ADC14.h"
+#include "../inc/LPF.h"
+#include "..\inc\Reflectance.h"
+#include "../inc/TA3InputCapture.h"
+#include "../inc/Tachometer.h"
+
+int cnt = 0;
+int bump = 0;
+uint8_t bump_data, rf_data, rf_center;
+
+volatile uint32_t ADCvalue;
+volatile uint32_t ADCflag;
+volatile uint32_t nr,nc,nl,nlc,nrc,ncc;
+
+// Tachometer variables (using Tachometer.h API)
+uint16_t leftSpeed, rightSpeed;           // wheel speeds (0.083 μs units)
+enum TachDirection leftDir, rightDir;     // FORWARD, STOPPED, REVERSE
+int32_t leftSteps, rightSteps;            // step counters (360 steps ≈ 220mm)
+
+// --- TimerA3Capture variables (COMMENTED - use Tachometer API instead) ---
+// uint16_t Period0;              // Right wheel period (1/SMCLK) units = 83.3 ns
+// uint16_t First0=0;             // Timer A3 first edge, P10.4
+// uint32_t Done0=0;              // pulse count
+// uint16_t Period2;              // Left wheel period (1/SMCLK) units = 83.3 ns
+// uint16_t First2=0;             // Timer A3 first edge, P8.2
+// uint32_t Done2=0;              // pulse count
+
+void SensorRead_ISR(void){  // runs at 2000 Hz
+  uint32_t raw17,raw12,raw16;
+  P1OUT ^= 0x01;         // profile
+  P1OUT ^= 0x01;         // profile
+  ADC_In17_12_16(&raw17,&raw12,&raw16);  // sample
+  nr = LPF_Calc(raw17);  // right is channel 17 P9.0
+  nc = LPF_Calc2(raw12);  // center is channel 12, P4.1
+  nl = LPF_Calc3(raw16);  // left is channel 16, P9.1
+  ADCflag = 1;           // semaphore
+  P1OUT ^= 0x01;         // profile
+}
+
+// Color definitions for RGB LED (use with LaunchPad_Output)
+#define LED_OFF     0x00
+#define LED_RED     0x01
+#define LED_GREEN   0x02
+#define LED_BLUE    0x04
+#define LED_YELLOW  0x03  // RED + GREEN
+#define LED_CYAN    0x06  // GREEN + BLUE
+#define LED_MAGENTA 0x05  // RED + BLUE
+#define LED_WHITE   0x07  // RED + GREEN + BLUE
+
+void Blink(int time){
+    LaunchPad_Output(LED_CYAN);
+    //LaunchPad_LED(1);
+    Clock_Delay1ms(time);
+    // LaunchPad_LED(0);
+    LaunchPad_Output(LED_OFF);
+    Clock_Delay1ms(time);
+}
+
+// --- TimerA3Capture ISRs (COMMENTED - Tachometer handles this internally) ---
+// // Tachometer ISR for right wheel (P10.4)
+// void PeriodMeasure0(uint16_t time){
+//   Period0 = (time - First0)&0xFFFF; // 16 bits, 83.3 ns resolution
+//   First0 = time;                    // setup for next
+//   Done0++;                          // count pulses
+// }
+//
+// // Tachometer ISR for left wheel (P8.2)
+// void PeriodMeasure2(uint16_t time){
+//   Period2 = (time - First2)&0xFFFF; // 16 bits, 83.3 ns resolution
+//   First2 = time;                    // setup for next
+//   Done2++;                          // count pulses
+// }
+
+void BumpHandler(uint8_t result){
+    (void) P4->IV;
+    bump_data = result;
+    // if(!((1<<5)&bump_data)){
+    //     for(int i = 0; i < cnt; i++){
+    //         Blink(200);
+    //     }
+    // }
+    // cnt++;
+    // bump = 1;
+}
+
+void TimedPause(uint32_t time){
+  Clock_Delay1ms(time);         // run for a while and stop
+  Motor_Stop();
+  while(LaunchPad_Input()==0);  // wait for touch
+  while(LaunchPad_Input());     // wait for release
+}
+
+int main(){
+
+     uint32_t raw17,raw12,raw16;
+     int32_t n;
+     uint32_t s;
+
+     // init section
+     Clock_Init48MHz();
+     Motor_Init();
+     Motor_Stop();
+     LaunchPad_Init();
+     Reflectance_Init();
+     BumpInt_Init(&BumpHandler);
+     ADCflag = 0;
+     s = 256; // replace with your choice
+     ADC0_InitSWTriggerCh17_12_16();   // initialize channels 17,12,16
+     ADC_In17_12_16(&raw17,&raw12,&raw16);  // sample
+     LPF_Init(raw17,s);     // P9.0/channel 17
+     LPF_Init2(raw12,s);     // P4.1/channel 12
+     LPF_Init3(raw16,s);     // P9.1/channel 16
+     UART0_Init();
+     TimerA1_Init(&SensorRead_ISR,250); // read sensor
+
+     // Tachometer initialization (uses TimerA3 internally)
+     Tachometer_Init();
+
+     // --- COMMENTED: Manual TimerA3Capture (use Tachometer_Init instead) ---
+     // TimerA3Capture_Init(&PeriodMeasure0,&PeriodMeasure2);
+
+     EnableInterrupts();
+    // end init
+
+    while(1){
+       WaitForInterrupt();
+
+       // Read sensors
+       rf_data = Reflectance_Read(1000);
+
+       if(rf_data!=0){
+           Blink(100);
+           Motor_Right(1000, 1000);
+           Clock_Delay1ms(10);
+           Motor_Stop();
+       }
+
+       rf_center = Reflectance_Center(1000);
+       nlc = LeftConvert(nl);
+       nrc = RightConvert(nr);
+       ncc = CenterConvert(nc);
+
+       // Get tachometer data (speed, direction, distance)
+       Tachometer_Get(&leftSpeed, &leftDir, &leftSteps,
+                      &rightSpeed, &rightDir, &rightSteps);
+
+       // Example: Print tachometer data (uncomment to use)
+       // UART0_OutString("L:");
+       // UART0_OutUDec5(leftSpeed);
+       // UART0_OutString(" R:");
+       // UART0_OutUDec5(rightSpeed);
+       // UART0_OutString(" Steps L:");
+       // UART0_OutSDec(leftSteps);
+       // UART0_OutString(" R:");
+       // UART0_OutSDec(rightSteps);
+       // UART0_OutString("\r\n");
+
+    //    if(bump){
+    //        bump = 0;
+    //        UART0_OutString("Period0 = ");UART0_OutUDec5(cnt);UART0_OutString(" \r\n");
+    //    }
+       Clock_Delay1ms(10);
+    }
+}
+
+

@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">
+<refactoring comment="Rename resource &apos;Lab3_Bump_Reflectance_Systick/Lab3_Sensorsmain_BumpInt&apos; to &apos;Lab3_Sensorsmain_BumpInt.c&apos;" description="Rename resource &apos;Lab3_Sensorsmain_BumpInt&apos;" flags="7" id="org.eclipse.ltk.core.refactoring.rename.resource" input="Lab3_Sensorsmain_BumpInt" name="Lab3_Sensorsmain_BumpInt.c" stamp="1774851539193" updateReferences="true"/>
+</session>
